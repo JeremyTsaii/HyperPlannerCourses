@@ -3,19 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
+	"os"
 )
 
 // Course is struct for a course entry
 type Course struct {
-	campus string
-	code string
-	credits float32
-	title string
+	Campus  string  `json:"campus"`
+	Code    string  `json:"code"`
+	Credits float32 `json:"credits"`
+	Title   string  `json:"title"`
 }
 
 func main() {
@@ -39,26 +39,34 @@ func main() {
 	courses := db.Collection("Courses")
 
 	// Insert course
+	testCourse := Course{"hmc", "CSCI134", 3.0, "Operating Systems"}
+	insertCourse(courses, testCourse)
+
+	// Read course
+	var course bson.M
+	readCourse(courses, course)
+}
+
+func insertCourse(courses *mongo.Collection, course Course) {
 	result, err := courses.InsertOne(
 		context.Background(),
-		bson.D{
-			{"campus", "hmc"},
-			{"code", "CSCI121"},
-			{"credits", 3.0},
-			{"title", "Software Development"},
-		})
-	
+		course)
+
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("API Result:", result);
-	fmt.Println("Successfully inserted.");
 
-	// Read course
-	var course bson.M 
-	if err = courses.FindOne(context.Background(), bson.M{}).Decode(&course); err != nil {
-		log.Fatal(err);
+	fmt.Println("API Result:", result.InsertedID)
+	fmt.Println("Successfully inserted.")
+}
+
+func readCourse(courses *mongo.Collection, course bson.M) {
+	err := courses.FindOne(context.Background(), bson.M{}).Decode(&course)
+
+	if err != nil {
+		log.Fatal(err)
 	}
-	fmt.Println(course);
+
+	fmt.Println("Found single document:", course)
 	fmt.Println("Successfully read.")
 }
