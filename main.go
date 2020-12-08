@@ -40,8 +40,21 @@ func main() {
 	// Read course
 	// var course bson.M
 	// readCourse(courses, course)
-	var results []Course
-	readAllCourses(courses, results)
+	var allCourses []Course
+	allFilter := bson.M{"campus": "hmc"}
+	readCoursesFilter(courses, allCourses, allFilter)
+
+	var codeCourses []Course
+	codeFilter := bson.M{"code": "CSCI134"}
+	readCoursesFilter(courses, codeCourses, codeFilter)
+
+	var titleCourses []Course
+	titleFilter := bson.M{"title": "Software Development"}
+	readCoursesFilter(courses, titleCourses, titleFilter)
+
+	var creditCourses []Course
+	creditFilter := bson.M{"credits": 3.0}
+	readCoursesFilter(courses, creditCourses, creditFilter)
 
 }
 
@@ -59,8 +72,8 @@ func insertCourse(courses *mongo.Collection, course Course) {
 }
 
 // Read single course from db
-func readCourse(courses *mongo.Collection, course bson.M) {
-	err := courses.FindOne(context.Background(), bson.M{}).Decode(&course)
+func readCourse(courses *mongo.Collection, course bson.M, filter bson.M) {
+	err := courses.FindOne(context.Background(), filter).Decode(&course)
 
 	if err != nil {
 		log.Fatal(err)
@@ -70,19 +83,20 @@ func readCourse(courses *mongo.Collection, course bson.M) {
 }
 
 // Read all courses from db and output as json string
-func readAllCourses(courses *mongo.Collection, results []Course) {
-	cursor, err := courses.Find(context.Background(), bson.D{})
+func readCoursesFilter(courses *mongo.Collection, results []Course, filter bson.M) {
+	cursor, err := courses.Find(context.Background(), filter)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Loop through all courses in cursor and append to results
+	total := 0
 	for cursor.Next(context.Background()) {
 		var course Course
 		if err := cursor.Decode(&course); err != nil {
 			log.Fatal(err)
 		}
-		
+		total++
 		results = append(results, course)
 	}
 
@@ -96,5 +110,6 @@ func readAllCourses(courses *mongo.Collection, results []Course) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Found all documents: ", string(ret))
+	fmt.Println("Found documents: ", total)
+	fmt.Println(string(ret))
 }
