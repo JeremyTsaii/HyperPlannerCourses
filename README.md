@@ -6,3 +6,24 @@ Experimenting with technologies meant to help query courses for HyperPlanner
 - MongoDB
 - REST/AWS API Gateway/AWS Lambda
 - GraphQL/AWS AppSync/AWS Lambda
+
+#### REST API Endpoints (requires api token)
+
+#### GraphQL API Endpoints (requires api token)
+
+### Build process for AWS Lambda
+
+To build `file.go` for AWS Lambda, we have to build for Linux since the binary for Lambda runs on Amazon Linux. If building on Windows, there are some permission issues that arise, but we can run a python script to fix this. Follow the steps below to build the binary and deploy to AWS Lambda. I use the UI to upload the zip file to Lambda.
+
+First, run
+```
+$ GOARCH=amd64 GOOS=linux go build file.go
+```
+to build the binary.
+
+Next, zip the binary so that you have a zip file called `file.zip`.
+
+Then, run the `changePerms` function in `scripts/set-executable.py` to change the executable permissions necessary for Lambda. The `src` argument is `file.zip` and the `dst` argument is your output zip file name containing the executable `file` with the correct permissions.
+
+Finally, upload the zip file to Lambda (either through UI or CLI).
+
