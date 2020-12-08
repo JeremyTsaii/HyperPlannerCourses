@@ -7,9 +7,32 @@ Experimenting with technologies meant to help query courses for HyperPlanner
 - REST/AWS API Gateway/AWS Lambda
 - GraphQL/AWS AppSync/AWS Lambda
 
-#### REST API Endpoints (requires api token)
+### REST API Endpoints (requires api token)
 
-#### GraphQL API Endpoints (requires api token)
+Invoke URL: https://sq3oxmnhjc.execute-api.us-east-1.amazonaws.com/Development
+
+Be sure to include `x-api-key` in the request header.
+
+#### GET:
+By default, hitting the endpoint returns all courses in the MongoDB Courses collection, as well as the number of courses. The shape of the json response is:
+```
+{
+  "courses": [],
+  "length": 0
+}
+```
+
+Possible query string parameters:
+- campus
+- code
+- credits
+- title
+
+(query example: https://sq3oxmnhjc.execute-api.us-east-1.amazonaws.com/Development?code=CSCI134)
+
+#### POST:
+
+### GraphQL API Endpoints (requires api token)
 
 ### Build process for AWS Lambda
 
