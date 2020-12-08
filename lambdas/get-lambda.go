@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
-	"os"
-	"net/url"
 	"encoding/json"
+	"net/url"
+	"os"
+	"strconv"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 )
 
 // Course is struct for a course entry
@@ -39,21 +41,21 @@ func handleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 	filter := bson.M{}
 	possible := [4]string{"campus", "code", "credits", "title"}
 	for _, pos := range possible {
-		if err := updateFilter(request, filter, pos); err != nil {
+		filter, err = updateFilter(request, filter, pos)
+		if err != nil {
 			return apiError(err)
 		}
 	}
-	
+
 	// Get cursor, loop through all courses, append to results
-	var result []Course
-	length, err := readCoursesFilter(courses, result, filter)
+	result, err := readCoursesFilter(courses, filter)
 	if err != nil {
 		return apiError(err)
 	}
 
 	// Format body response
 	tmap := make(map[string]interface{})
-	tmap["length"] = length
+	tmap["length"] = len(result)
 	tmap["courses"] = result
 
 	body, err := json.Marshal(tmap)
@@ -65,42 +67,52 @@ func handleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 }
 
 // Add parameter key and value to bson query
-func updateFilter(request events.APIGatewayProxyRequest, filter bson.M, parameter string) (error) {
+func updateFilter(request events.APIGatewayProxyRequest, filter bson.M, parameter string) (bson.M, error) {
 	param, found := request.QueryStringParameters[parameter]
 	if found {
 		value, err := url.QueryUnescape(param)
 		if nil != err {
-			return err
+			return nil, err
 		}
-		filter[parameter] = value
+
+		// Credits parameter must be turned back to float
+		if parameter == "credits" {
+			float, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				return nil, err
+			}
+			filter[parameter] = float
+		} else {
+			filter[parameter] = value
+		}
 	}
-	return nil
+	return filter, nil
 }
 
 // Read all courses that match filter from db and append to results
-func readCoursesFilter(courses *mongo.Collection, result []Course, filter bson.M) (int, error) {
+func readCoursesFilter(courses *mongo.Collection, filter bson.M) ([]Course, error) {
+	var result []Course
+
 	cur, err := courses.Find(context.Background(), filter)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	// Loop through all courses in cursor and append to results
-	length := 0
 	for cur.Next(context.Background()) {
 		var course Course
 		if err := cur.Decode(&course); err != nil {
-			return -1, err
+			return nil, err
 		}
-		length++
 		result = append(result, course)
 	}
 
 	if err = cur.Err(); err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	cur.Close(context.Background())
-	return length, nil
+	return result, nil
 }
 
 func apiError(err error) (events.APIGatewayProxyResponse, error) {
