@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"encoding/json"
-	"log"
-	"os"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
+	"os"
 )
 
 // Course is struct for a course entry
