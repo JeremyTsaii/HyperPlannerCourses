@@ -14,7 +14,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Course is struct for a course entry
+// Connection Struct stores handle to collection used by Lambda
+type Connection struct {
+	collection *mongo.Collection
+}
+
+// Course Struct for course entry
 type Course struct {
 	Campus  string  `json:"campus"`
 	Code    string  `json:"code"`
@@ -22,35 +27,23 @@ type Course struct {
 	Title   string  `json:"title"`
 }
 
-func handleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Open Connection
-	uri := os.Getenv("CONNECT_STR")
-	clientOptions := options.Client().ApplyURI(uri)
-	client, err := mongo.Connect(context.Background(), clientOptions)
-
-	if err != nil {
-		return events.APIGatewayProxyResponse{}, err
-	}
-
-	// Connect to db
-	db := client.Database("HyperPlanner")
-	courses := db.Collection("Courses")
-
+func (connection Connection) handleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Look at query parameters and create filter
 	// 4 possible parameters: campus, code, credits, title
 	filter := bson.M{}
 	possible := [4]string{"campus", "code", "credits", "title"}
 	for _, pos := range possible {
-		filter, err = updateFilter(request, filter, pos)
-		if err != nil {
-			return apiError(err)
+		newFilter, updateErr := updateFilter(request, filter, pos)
+		if updateErr != nil {
+			return apiError(updateErr)
 		}
+		filter = newFilter
 	}
 
 	// Get cursor, loop through all courses, append to results
-	result, err := readCoursesFilter(courses, filter)
-	if err != nil {
-		return apiError(err)
+	result, readErr := readCoursesFilter(connection.collection, filter)
+	if readErr != nil {
+		return apiError(readErr)
 	}
 
 	// Format body response
@@ -58,9 +51,9 @@ func handleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 	tmap["length"] = len(result)
 	tmap["courses"] = result
 
-	body, err := json.Marshal(tmap)
-	if err != nil {
-		return apiError(err)
+	body, jsonErr := json.Marshal(tmap)
+	if jsonErr != nil {
+		return apiError(jsonErr)
 	}
 
 	return events.APIGatewayProxyResponse{Body: string(body), StatusCode: 200}, nil
@@ -71,7 +64,7 @@ func updateFilter(request events.APIGatewayProxyRequest, filter bson.M, paramete
 	param, found := request.QueryStringParameters[parameter]
 	if found {
 		value, err := url.QueryUnescape(param)
-		if nil != err {
+		if err != nil {
 			return nil, err
 		}
 
@@ -90,35 +83,44 @@ func updateFilter(request events.APIGatewayProxyRequest, filter bson.M, paramete
 }
 
 // Read all courses that match filter from db and append to results
-func readCoursesFilter(courses *mongo.Collection, filter bson.M) ([]Course, error) {
-	var result []Course
-
-	cur, err := courses.Find(context.Background(), filter)
-	if err != nil {
-		return nil, err
+func readCoursesFilter(courses *mongo.Collection, filter bson.M) ([]bson.M, error) {
+	ctx := context.Background()
+	cur, findErr := courses.Find(ctx, filter)
+	if findErr != nil {
+		return nil, findErr
 	}
 
-	// Loop through all courses in cursor and append to results
-	for cur.Next(context.Background()) {
-		var course Course
-		if err := cur.Decode(&course); err != nil {
-			return nil, err
-		}
-		result = append(result, course)
+	// Decode all courses in cursor into result
+	var result []bson.M
+	if curErr := cur.All(ctx, &result); curErr != nil {
+		return nil, curErr
 	}
 
-	if err = cur.Err(); err != nil {
-		return nil, err
-	}
-
-	cur.Close(context.Background())
+	cur.Close(ctx)
 	return result, nil
 }
 
 func apiError(err error) (events.APIGatewayProxyResponse, error) {
-	return events.APIGatewayProxyResponse{}, err
+	return events.APIGatewayProxyResponse{Body: err.Error(), StatusCode: 502}, err
 }
 
 func main() {
-	lambda.Start(handleRequest)
+	// Open Connection
+	ctx := context.Background()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("CONNECT_STR")))
+
+	if err != nil {
+		panic(err)
+	}
+
+	// close db connection after main returns
+	defer client.Disconnect(ctx)
+
+	// Store connection for connection pooling
+	connection := Connection{
+		collection: client.Database("HyperPlanner").Collection("Courses"),
+	}
+
+	// Invoke handleRequest with connection as receiver
+	lambda.Start(connection.handleRequest)
 }
