@@ -9,7 +9,7 @@ Experimenting with technologies meant to help query courses for HyperPlanner
 
 ### REST API Endpoints (requires api token)
 
-Invoke URL: https://sq3oxmnhjc.execute-api.us-east-1.amazonaws.com/Development
+Invoke URL: https://apgn3tyfmc.execute-api.us-east-1.amazonaws.com/Production
 
 Be sure to include `x-api-key` in the request header.
 
@@ -28,7 +28,7 @@ Possible query string parameters:
 - credits
 - title
 
-(query example: https://sq3oxmnhjc.execute-api.us-east-1.amazonaws.com/Development?code=CSCI134)
+(query example: https://apgn3tyfmc.execute-api.us-east-1.amazonaws.com/Production?code=CSCI134)
 
 #### POST:
 Hitting the endpoint inserts all specified courses into the MongoDB Courses collection. To properly insert, the request body should have the following shape:
