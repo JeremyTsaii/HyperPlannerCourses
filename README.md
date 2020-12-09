@@ -31,6 +31,25 @@ Possible query string parameters:
 (query example: https://sq3oxmnhjc.execute-api.us-east-1.amazonaws.com/Development?code=CSCI134)
 
 #### POST:
+Hitting the endpoint inserts all specified courses into the MongoDB Courses collection. To properly insert, the request body should have the following shape:
+```
+{
+  "courses": [
+    {
+      "campus": "hmc",
+      "code": "CSCI121",
+      "credits": 3.0,
+      "title": "Software Development"
+    },
+    {
+      "campus": "hmc",
+      "code": "CSCI134",
+      "credits": 3.0,
+      "title": "Operating Systems"
+    }
+  ]
+}
+```
 
 ### GraphQL API Endpoints (requires api token)
 
