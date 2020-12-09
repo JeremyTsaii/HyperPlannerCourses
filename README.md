@@ -51,6 +51,13 @@ Hitting the endpoint inserts all specified courses into the MongoDB Courses coll
 }
 ```
 
+The response will return the number of courses inserted in the following shape:
+```
+{
+  "length": 0
+}
+```
+
 ### GraphQL API Endpoints (requires api token)
 
 ### Build process for AWS Lambda
